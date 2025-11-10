@@ -11,6 +11,8 @@ def goto_portal(ctx: BrowserContext, page: Page) -> Page:
         page.wait_for_load_state("networkidle")
     except Exception:
         pass
-    logger.info("Successfully navigated to the matrix")
+    logger.info("已进入教务系统")
     return page
+
+
 logger = logging.getLogger(__name__)
