@@ -8,3 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Dist files
+output.json
+
+# Other files
+user-data/
+output.log
