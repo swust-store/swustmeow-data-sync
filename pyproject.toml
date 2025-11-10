@@ -1,0 +1,7 @@
+[project]
+name = "swustmeow-data-sync"
+version = "0.1.0"
+description = "An application for synchronizing data from SWUST website to swustmeow."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
