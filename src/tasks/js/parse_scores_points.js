@@ -78,7 +78,7 @@ function parseScoresPoints() {
           formalScore,
           resitScore,
           points,
-          scoreType: "Plan",
+          scoreType: "plan",
           term:
             academicYear && currentTerm ? `${academicYear}-${currentTerm}` : "",
           needEvaluation,
@@ -129,8 +129,8 @@ function parseScoresPoints() {
     return out;
   };
 
-  const otherCommon = parseOther("Common", "Common");
-  const otherPhysical = parseOther("Physical", "Physical");
+  const otherCommon = parseOther("Common", "common");
+  const otherPhysical = parseOther("Physical", "physical");
 
   return { scores: [...planScores, ...otherCommon, ...otherPhysical], points };
 }

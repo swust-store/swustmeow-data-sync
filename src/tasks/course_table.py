@@ -28,11 +28,11 @@ def fetch_course_table(ctx: BrowserContext, page: Page) -> list[dict]:
     normal = _fetch_one(ctx, page, COURSE_TABLE_URL)
     if normal and normal.get("term"):
         term = normal["term"]
-        cid = hashlib.sha1(f"normal{term}".encode("utf-8")).hexdigest()
+        cid = hashlib.sha1(f"NORMAL{term}".encode("utf-8")).hexdigest()
         containers.append(
             {
                 "id": cid,
-                "type": "normal",
+                "type": "NORMAL",
                 "term": term,
                 "entries": normal.get("entries", []),
             }
@@ -41,11 +41,11 @@ def fetch_course_table(ctx: BrowserContext, page: Page) -> list[dict]:
     optional = _fetch_one(ctx, page, OPTIONAL_TABLE_URL)
     if optional and optional.get("term"):
         term = optional["term"]
-        cid = hashlib.sha1(f"optional{term}".encode("utf-8")).hexdigest()
+        cid = hashlib.sha1(f"OPTIONAL{term}".encode("utf-8")).hexdigest()
         containers.append(
             {
                 "id": cid,
-                "type": "optional",
+                "type": "OPTIONAL",
                 "term": term,
                 "entries": optional.get("entries", []),
             }

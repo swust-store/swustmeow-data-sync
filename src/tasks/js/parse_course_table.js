@@ -66,16 +66,16 @@ function parseCourseTable() {
         const startSection = 2 * (i + 1) - 1;
         const endSection = 2 * (i + 1);
         entries.push({
-          courseName,
-          displayName: courseName,
+          course_name: courseName,
+          display_name: courseName,
           teachers: teacherList,
-          startWeek,
-          endWeek,
+          start_week: startWeek,
+          end_week: endWeek,
           place,
           weekday,
-          startSection,
-          endSection,
-          isCustom: false,
+          start_section: startSection,
+          end_section: endSection,
+          is_custom: false,
         });
       }
     }
