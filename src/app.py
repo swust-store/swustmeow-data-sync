@@ -5,6 +5,8 @@ import time
 import threading
 from pathlib import Path
 from datetime import datetime
+import urllib.request
+import urllib.error
 
 from playwright.sync_api import sync_playwright
 
@@ -33,9 +35,59 @@ def ensure_output() -> None:
 
 def _post_export(window: StatusWindow, out_path: Path, elapsed: float) -> None:
     def on_cloud() -> None:
-        logger.info("TODO")
-        window.set_status("TODO")
-        window.on_done(elapsed)
+        window.set_status("正在上传数据")
+
+        def _upload():
+            try:
+                payload = json.loads(Path(out_path).read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.exception(f"读取输出数据失败: {e}")
+                window.root.after(0, lambda: window.set_status("读取数据失败"))
+                return
+
+            try:
+                url = "https://next.meowhope.com/api/data_sync/new"
+                body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=body,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=20) as resp:
+                    resp_text = resp.read().decode("utf-8", errors="ignore")
+            except Exception as e:
+                logger.exception(f"上传失败: {e}")
+                window.root.after(0, lambda: window.set_status("上传失败"))
+                return
+
+            try:
+                data = json.loads(resp_text)
+                import_code = None
+                if isinstance(data, dict) and data.get("code") == 200:
+                    inner = data.get("data") or {}
+                    import_code = inner.get("code")
+                if import_code:
+
+                    def _show():
+                        window.set_status("导入码已生成")
+                        try:
+                            window.show_import_code_modal(import_code)
+                        except Exception:
+                            pass
+
+                    window.root.after(0, _show)
+                else:
+                    logger.warning(f"云端返回异常: {data}")
+                    window.root.after(0, lambda: window.set_status("云端返回异常"))
+            except Exception as e:
+                logger.exception(f"解析响应失败: {e}")
+                window.root.after(0, lambda: window.set_status("解析响应失败"))
+
+        threading.Thread(target=_upload, daemon=True).start()
 
     def on_offline() -> None:
         window.set_status("正在生成离线导入二维码")

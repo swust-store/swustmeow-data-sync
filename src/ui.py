@@ -284,6 +284,66 @@ class StatusWindow:
 
         self._modal = top
 
+    def show_import_code_modal(self, import_code: str) -> None:
+        top = tk.Toplevel(self.root)
+        top.title("导入码")
+        top.transient(self.root)
+        try:
+            top.grab_set()
+        except Exception:
+            pass
+        frm = ttk.Frame(top, padding=(20, 18))
+        frm.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frm, text="导入码").pack(anchor=tk.CENTER)
+        code_lbl = ttk.Label(frm, text=import_code, font=("Consolas", 26, "bold"))
+        code_lbl.pack(anchor=tk.CENTER, pady=(6, 10))
+        ttk.Label(
+            frm, text="请进入西科喵->我的->导入数据->使用导入码，输入此导入码完成导入"
+        ).pack(anchor=tk.CENTER, pady=(0, 10))
+
+        btns = ttk.Frame(frm)
+        btns.pack(anchor=tk.CENTER)
+
+        def _copy():
+            try:
+                self.root.clipboard_clear()
+                self.root.clipboard_append(import_code)
+            except Exception:
+                pass
+
+        ttk.Button(btns, text="复制导入码", command=_copy).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(btns, text="已输入 退出", command=self._on_close).pack(side=tk.LEFT)
+
+        try:
+            self.root.update_idletasks()
+            top.update_idletasks()
+            pw = self.root.winfo_width() or self.root.winfo_reqwidth()
+            ph = self.root.winfo_height() or self.root.winfo_reqheight()
+            px = self.root.winfo_rootx()
+            py = self.root.winfo_rooty()
+            tw = top.winfo_width() or top.winfo_reqwidth()
+            th = top.winfo_height() or top.winfo_reqheight()
+            x = int(px + (pw - tw) / 2)
+            y = int(py + (ph - th) / 2)
+            top.geometry(f"+{max(0, x)}+{max(0, y)}")
+        except Exception:
+            pass
+
+        def _on_close_modal():
+            try:
+                top.grab_release()
+            except Exception:
+                pass
+            self._on_close()
+
+        try:
+            top.protocol("WM_DELETE_WINDOW", _on_close_modal)
+        except Exception:
+            pass
+
 
 class QRWindow:
     def __init__(
@@ -310,6 +370,10 @@ class QRWindow:
         wrap.pack(fill=tk.BOTH, expand=True)
         self.label = ttk.Label(wrap)
         self.label.pack(expand=True)
+
+        ttk.Label(
+            wrap, text="请进入西科喵->我的->导入数据->扫描二维码，扫描此二维码完成导入"
+        ).pack(anchor=tk.CENTER, pady=(0, 10))
 
         bottom = ttk.Frame(wrap)
         bottom.pack(fill=tk.X, pady=(8, 0))
