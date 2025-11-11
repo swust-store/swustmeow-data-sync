@@ -10,7 +10,7 @@ wheels/
 .venv
 
 # Dist files
-output.json
+output/
 
 # Other files
 user-data/

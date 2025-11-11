@@ -1,5 +1,6 @@
 import logging
 import sys
+from pathlib import Path
 
 
 def setup_logging(level: int = logging.INFO, logfile: str = "output.log") -> None:
@@ -16,6 +17,13 @@ def setup_logging(level: int = logging.INFO, logfile: str = "output.log") -> Non
     stream_handler.setLevel(level)
     stream_handler.setFormatter(logging.Formatter(log_format, datefmt=datefmt))
 
+    try:
+        p = Path(logfile)
+        if p.parent:
+            p.parent.mkdir(parents=True, exist_ok=True)
+        logfile = str(p)
+    except Exception:
+        pass
     file_handler = logging.FileHandler(logfile, mode="w", encoding="utf-8")
     file_handler.setLevel(level)
     file_handler.setFormatter(logging.Formatter(log_format, datefmt=datefmt))

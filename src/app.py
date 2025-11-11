@@ -1,0 +1,178 @@
+from __future__ import annotations
+import json
+import logging
+import time
+import threading
+from pathlib import Path
+from datetime import datetime
+
+from playwright.sync_api import sync_playwright
+
+from ui import StatusWindow, QRWindow
+from qr_utils import make_qr_pil_images_from_output
+from tasks import (
+    ensure_logged_in,
+    goto_portal,
+    fetch_course_table,
+    fetch_exams,
+    fetch_scores_points,
+)
+
+logger = logging.getLogger(__name__)
+
+OUTPUT_DIR = Path("output")
+OUTPUT_JSON = OUTPUT_DIR / "output.json"
+
+
+def ensure_output() -> None:
+    try:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
+
+def _post_export(window: StatusWindow, out_path: Path, elapsed: float) -> None:
+    def on_cloud() -> None:
+        logger.info("TODO")
+        window.set_status("TODO")
+        window.on_done(elapsed)
+
+    def on_offline() -> None:
+        window.set_status("正在生成离线导入二维码")
+
+        def _gen_and_show():
+            try:
+                is_multi, pil_images = make_qr_pil_images_from_output(out_path)
+            except Exception as e:
+                logger.exception(f"生成二维码失败: {e}")
+                window.root.after(
+                    0,
+                    lambda: (
+                        window.set_status("生成二维码失败"),
+                        window.on_done(elapsed),
+                    ),
+                )
+                return
+
+            # output/qrcodes/<timestamp>/
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            save_dir = OUTPUT_DIR / "qrcodes" / ts
+            try:
+                save_dir.mkdir(parents=True, exist_ok=True)
+                if is_multi:
+                    total = len(pil_images)
+                    for i, img in enumerate(pil_images, start=1):
+                        fname = save_dir / f"frame_{i:03d}_of_{total:03d}.png"
+                        try:
+                            img.save(fname)
+                        except Exception:
+                            pass
+                else:
+                    try:
+                        pil_images[0].save(save_dir / "single.png")
+                    except Exception:
+                        pass
+                logger.info(f"二维码已保存到 {save_dir}")
+            except Exception as e:
+                logger.warning(f"保存二维码失败: {e}")
+
+            def _open():
+                try:
+                    QRWindow(
+                        window.root,
+                        pil_images,
+                        is_multi,
+                        on_done=window._on_close,
+                        interval_ms=1000,
+                    )
+                    window.set_status("请使用导入功能扫描二维码")
+                except Exception as e:
+                    logger.exception(f"显示二维码失败: {e}")
+                    window.set_status("显示二维码失败")
+                    window.on_done(elapsed)
+
+            window.root.after(0, _open)
+
+        threading.Thread(target=_gen_and_show, daemon=True).start()
+
+    def _show():
+        window.set_status("请选择后续操作")
+        window.show_actions(on_cloud, on_offline)
+        window.ask_choice_modal(
+            "请选择后续操作",
+            "请选择后续操作",
+            [("上传云端并获取导入码", on_cloud), ("生成离线导入二维码", on_offline)],
+        )
+
+    window.root.after(0, _show)
+
+
+def worker_fetch(window: StatusWindow, user_data_dir: Path) -> None:
+    start = time.perf_counter()
+    logger.info("启动 Chromium 持久化上下文")
+    ensure_output()
+    try:
+        with sync_playwright() as p:
+            ctx = p.chromium.launch_persistent_context(
+                user_data_dir,
+                channel="chromium",
+                headless=False,
+                slow_mo=50,
+            )
+
+            def _cleanup() -> None:
+                try:
+                    ctx.close()
+                except Exception:
+                    pass
+
+            window.set_cleanup(_cleanup)
+
+            window.root.after(0, lambda: window.set_status("等待用户登录"))
+            logger.info("正在确认登录状态")
+            page = ensure_logged_in(
+                ctx,
+                on_wait_login=lambda: window.root.after(
+                    0, lambda: window.show_login_prompt(True)
+                ),
+                on_login_success=lambda: window.root.after(
+                    0, lambda: window.show_login_prompt(False)
+                ),
+            )
+
+            window.root.after(0, lambda: window.set_status("获取课表与考试"))
+            logger.info("进入门户并获取课表与考试")
+            page = goto_portal(ctx, page)
+            course_containers = fetch_course_table(ctx, page)
+            exams = fetch_exams(ctx, page)
+
+            window.root.after(0, lambda: window.set_status("获取成绩与绩点"))
+            logger.info("获取成绩与绩点")
+            scores_points = fetch_scores_points(ctx, page)
+
+            window.root.after(0, lambda: window.set_status("写入输出 JSON"))
+            output = {
+                "courseContainers": course_containers,
+                "exams": exams.get("exams", []),
+                "scores": scores_points.get("scores", []),
+                "points": scores_points.get("points", {}),
+            }
+            OUTPUT_JSON.write_text(
+                json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            logger.info(f"已写入输出 JSON 到 {OUTPUT_JSON.resolve()}")
+
+            elapsed = time.perf_counter() - start
+            _post_export(window, OUTPUT_JSON, elapsed)
+    except Exception as e:
+        logger.exception(f"致命错误: {e}")
+        try:
+            window.set_status("发生错误")
+        except Exception:
+            pass
+
+
+def start_with_existing(window: StatusWindow, out_path: Path) -> None:
+    ensure_output()
+    window.set_status("使用已有数据")
+    _post_export(window, out_path, elapsed=0.0)
