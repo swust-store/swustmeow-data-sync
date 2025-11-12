@@ -1,15 +1,14 @@
 from __future__ import annotations
 from playwright.sync_api import BrowserContext, Page
 import hashlib
-import pathlib
+from .resource_loader import read_js
 
 COURSE_TABLE_URL = "https://matrix.dean.swust.edu.cn/acadmicManager/index.cfm?event=studentPortal:courseTable"
 OPTIONAL_TABLE_URL = "https://matrix.dean.swust.edu.cn/acadmicManager/index.cfm?event=chooseCourse:courseTable"
 
 
 def _parse_course_table(page: Page) -> dict | None:
-    js_path = pathlib.Path(__file__).parent / "js" / "parse_course_table.js"
-    js_code = js_path.read_text(encoding="utf-8")
+    js_code = read_js("parse_course_table.js")
     data = page.evaluate(f"(() => {{\n{js_code}\nreturn parseCourseTable();\n}})()")
     if not data or not data.get("term"):
         return None

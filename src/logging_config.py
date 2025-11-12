@@ -13,9 +13,11 @@ def setup_logging(level: int = logging.INFO, logfile: str = "output.log") -> Non
     log_format = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
 
-    stream_handler = logging.StreamHandler(stream=sys.stdout)
-    stream_handler.setLevel(level)
-    stream_handler.setFormatter(logging.Formatter(log_format, datefmt=datefmt))
+    if getattr(sys, "stdout", None) is not None:
+        stream_handler = logging.StreamHandler(stream=sys.stdout)
+        stream_handler.setLevel(level)
+        stream_handler.setFormatter(logging.Formatter(log_format, datefmt=datefmt))
+        root.addHandler(stream_handler)
 
     try:
         p = Path(logfile)
@@ -28,5 +30,4 @@ def setup_logging(level: int = logging.INFO, logfile: str = "output.log") -> Non
     file_handler.setLevel(level)
     file_handler.setFormatter(logging.Formatter(log_format, datefmt=datefmt))
 
-    root.addHandler(stream_handler)
     root.addHandler(file_handler)

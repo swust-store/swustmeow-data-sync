@@ -1,4 +1,5 @@
 import pathlib
+import sys
 import logging
 import threading
 from logging_config import setup_logging
@@ -6,12 +7,21 @@ from ui import StatusWindow
 from app import worker_fetch, ensure_output, OUTPUT_JSON, start_with_existing
 
 
-USER_DATA = pathlib.Path("user-data")
+def _base_dir() -> pathlib.Path:
+    if getattr(sys, "frozen", False):
+        try:
+            return pathlib.Path(sys.executable).resolve().parent
+        except Exception:
+            return pathlib.Path.cwd()
+    return pathlib.Path.cwd()
+
+
+USER_DATA = _base_dir() / "user-data"
 logger = logging.getLogger("main")
 
 
 def main():
-    setup_logging(logfile=str(pathlib.Path("output") / "output.log"))
+    setup_logging(logfile=str(_base_dir() / "output" / "output.log"))
     ensure_output()
 
     window = StatusWindow()

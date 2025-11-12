@@ -1,6 +1,8 @@
 from __future__ import annotations
 import json
 import logging
+import sys
+import os
 import time
 import threading
 from pathlib import Path
@@ -22,7 +24,17 @@ from tasks import (
 
 logger = logging.getLogger(__name__)
 
-OUTPUT_DIR = Path("output")
+
+def _app_base_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        try:
+            return Path(sys.executable).resolve().parent
+        except Exception:
+            return Path.cwd()
+    return Path.cwd()
+
+
+OUTPUT_DIR = _app_base_dir() / "output"
 OUTPUT_JSON = OUTPUT_DIR / "output.json"
 
 
@@ -159,18 +171,42 @@ def _post_export(window: StatusWindow, out_path: Path, elapsed: float) -> None:
     window.root.after(0, _show)
 
 
+def _choose_and_launch_context(p, user_data_dir: Path):
+    os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
+    os.environ.setdefault("PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS", "1")
+
+    preferred = []
+    env_ch = os.environ.get("SWUSTMEOW_BROWSER_CHANNEL")
+    if env_ch:
+        preferred.append(env_ch)
+    preferred.extend(["msedge", "chrome", "msedge-beta", "chrome-beta", "chromium"])
+
+    last_err = None
+    udd = str(Path(user_data_dir).resolve())
+
+    for ch in preferred:
+        try:
+            kwargs = dict(user_data_dir=udd, headless=False, slow_mo=50)
+            if ch:
+                kwargs["channel"] = ch
+            return p.chromium.launch_persistent_context(**kwargs)
+        except Exception as e:
+            logger.warning(f"launch_persistent_context failed for channel={ch}: {e}")
+            last_err = e
+            continue
+
+    if last_err:
+        raise last_err
+    raise RuntimeError("No available browser channel found for Playwright")
+
+
 def worker_fetch(window: StatusWindow, user_data_dir: Path) -> None:
     start = time.perf_counter()
     logger.info("启动 Chromium 持久化上下文")
     ensure_output()
     try:
         with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(
-                user_data_dir,
-                channel="chromium",
-                headless=False,
-                slow_mo=50,
-            )
+            ctx = _choose_and_launch_context(p, user_data_dir)
 
             def _cleanup() -> None:
                 try:

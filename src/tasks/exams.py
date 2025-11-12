@@ -1,6 +1,6 @@
 from __future__ import annotations
 from playwright.sync_api import BrowserContext, Page
-import pathlib
+from .resource_loader import read_js
 
 EXAM_TABLE_URL = "https://matrix.dean.swust.edu.cn/acadmicManager/index.cfm?event=studentPortal:examTable"
 
@@ -20,7 +20,6 @@ def fetch_exams(ctx: BrowserContext, page: Page) -> dict:
         except Exception:
             pass
 
-    js_path = pathlib.Path(__file__).parent / "js" / "parse_exams.js"
-    js_code = js_path.read_text(encoding="utf-8")
+    js_code = read_js("parse_exams.js")
     data = page.evaluate(f"(() => {{\n{js_code}\nreturn parseExams();\n}})()")
     return data

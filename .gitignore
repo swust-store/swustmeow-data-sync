@@ -5,6 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
+*.spec
+ms-playwright/
 
 # Virtual environments
 .venv

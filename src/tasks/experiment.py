@@ -2,9 +2,9 @@ from __future__ import annotations
 import logging
 import re
 from typing import List, Dict
-from pathlib import Path
 from playwright.sync_api import BrowserContext, Page
 from typing import Tuple
+from .resource_loader import read_js
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +41,7 @@ def _term_output_name(term: str) -> str:
 
 
 def _load_js() -> str:
-    return (Path(__file__).parent / "js" / "parse_experiment.js").read_text(
-        encoding="utf-8"
-    )
+    return read_js("parse_experiment.js")
 
 
 def _fetch_page(page: Page, js: str, url: str) -> Dict:
