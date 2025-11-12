@@ -27,6 +27,7 @@ $env:PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = '1'
 $cmd = @(
   'uv','run','--with','pyinstaller','--with','pyinstaller-hooks-contrib',
   'pyinstaller','--noconfirm','--onefile','--name','swustmeow-data-sync',
+  '--icon','assets\icon.ico',
   '--runtime-hook', $hook,
   '--hidden-import','tkinter',
   '--hidden-import','playwright._impl._driver',
