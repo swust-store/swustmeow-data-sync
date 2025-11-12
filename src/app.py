@@ -6,7 +6,6 @@ import threading
 from pathlib import Path
 from datetime import datetime
 import urllib.request
-import urllib.error
 
 from playwright.sync_api import sync_playwright
 
@@ -18,6 +17,7 @@ from tasks import (
     fetch_course_table,
     fetch_exams,
     fetch_scores_points,
+    fetch_experiment_course_containers,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,15 +192,36 @@ def worker_fetch(window: StatusWindow, user_data_dir: Path) -> None:
                 ),
             )
 
-            window.root.after(0, lambda: window.set_status("获取课表与考试"))
-            logger.info("进入门户并获取课表与考试")
+            window.root.after(0, lambda: window.set_status("获取课表"))
+            logger.info("进入教务系统并获取课表")
             page = goto_portal(ctx, page)
             course_containers = fetch_course_table(ctx, page)
+
+            window.root.after(0, lambda: window.set_status("获取考试安排"))
+            logger.info("获取考试安排")
             exams = fetch_exams(ctx, page)
 
             window.root.after(0, lambda: window.set_status("获取成绩与绩点"))
             logger.info("获取成绩与绩点")
             scores_points = fetch_scores_points(ctx, page)
+
+            normal_terms = []
+            for c in course_containers or []:
+                t = (c or {}).get("term")
+                if t and t not in normal_terms:
+                    normal_terms.append(t)
+            window.root.after(0, lambda: window.set_status("获取实验课表"))
+            logger.info("开始获取完整实验课表")
+            exp_containers = fetch_experiment_course_containers(page, normal_terms)
+
+            # 合并实验课表到对应学期的课表容器中
+            term_index = {c["term"]: c for c in course_containers}
+            for exp in exp_containers:
+                term = exp["term"]
+                if term in term_index:
+                    term_index[term]["entries"].extend(exp["entries"])
+                else:
+                    course_containers.append(exp)
 
             window.root.after(0, lambda: window.set_status("写入输出 JSON"))
             output = {
