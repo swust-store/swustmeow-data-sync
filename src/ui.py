@@ -301,6 +301,9 @@ class StatusWindow:
         ttk.Label(
             frm, text="请进入西科喵->我的->导入数据->使用导入码，输入此导入码完成导入"
         ).pack(anchor=tk.CENTER, pady=(0, 10))
+        ttk.Label(frm, text="本导入码将在十分钟后失效，请及时使用").pack(
+            anchor=tk.CENTER, pady=(0, 10)
+        )
 
         btns = ttk.Frame(frm)
         btns.pack(anchor=tk.CENTER)
