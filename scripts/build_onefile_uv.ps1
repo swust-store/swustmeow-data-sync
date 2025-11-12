@@ -1,5 +1,6 @@
 param(
-  [string]$Icon = ''
+  [string]$Icon = '',
+  [string]$UPXDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,22 @@ $cmd = @(
   '--console'
 )
 
+$upxDirToUse = ''
+if ($UPXDir -ne '') {
+  if (-not (Test-Path $UPXDir)) { throw "UPXDir not found: $UPXDir" }
+  $upxDirToUse = (Resolve-Path $UPXDir)
+} else {
+  $upxCmd = Get-Command upx -ErrorAction SilentlyContinue
+  if ($upxCmd) { $upxDirToUse = Split-Path -Parent $upxCmd.Source }
+}
+
+if ($upxDirToUse -ne '') {
+  Info ("Using UPX from: $upxDirToUse")
+  $cmd += @('--upx-dir', $upxDirToUse)
+} else {
+  Info "UPX not found. Building without UPX compression."
+}
+
 foreach ($d in $addData) { $cmd += @('--add-data', $d) }
 if ($iconArg -ne '') { $cmd += $iconArg }
 $cmd += $entry
@@ -49,4 +66,3 @@ if ($cmd.Count -gt 1) {
 }
 
 Info "Done. Output: dist/swustmeow-data-sync.exe"
-
